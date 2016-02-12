@@ -57,6 +57,7 @@ from yapsy.PluginManager import PluginManager
 from blinker import signal
 
 from .post import Post  # NOQA
+from .state import Persistor
 from . import DEBUG, utils, shortcodes
 from .plugin_categories import (
     Command,
@@ -450,6 +451,7 @@ class Nikola(object):
             'OUTPUT_FOLDER': 'output',
             'POSTS': (("posts/*.txt", "posts", "post.tmpl"),),
             'POSTS_SECTIONS': True,
+            'POSTS_SECTION_COLORS': {},
             'POSTS_SECTION_ARE_INDEXES': True,
             'POSTS_SECTION_DESCRIPTIONS': "",
             'POSTS_SECTION_FROM_META': False,
@@ -584,7 +586,12 @@ class Nikola(object):
                                              'body_end',
                                              'extra_head_data',
                                              'date_format',
-                                             'js_date_format',)
+                                             'js_date_format',
+                                             'posts_section_colors',
+                                             'posts_section_descriptions',
+                                             'posts_section_name',
+                                             'posts_section_title',
+                                             )
         # WARNING: navigation_links SHOULD NOT be added to the list above.
         #          Themes ask for [lang] there and we should provide it.
 
@@ -817,6 +824,12 @@ class Nikola(object):
 
         self._set_global_context()
 
+        # Set persistent state facility
+        self.state = Persistor(os.path.join('state_data.json'))
+
+        # Set cache facility
+        self.cache = Persistor(os.path.join(self.config['CACHE_FOLDER'], 'cache_data.json'))
+
     def init_plugins(self, commands_only=False):
         """Load plugins as needed."""
         self.plugin_manager = PluginManager(categories_filter={
@@ -836,19 +849,19 @@ class Nikola(object):
         self.plugin_manager.getPluginLocator().setPluginInfoExtension('plugin')
         extra_plugins_dirs = self.config['EXTRA_PLUGINS_DIRS']
         if sys.version_info[0] == 3:
-            places = [
+            self._plugin_places = [
                 resource_filename('nikola', 'plugins'),
                 os.path.join(os.getcwd(), 'plugins'),
                 os.path.expanduser('~/.nikola/plugins'),
             ] + [path for path in extra_plugins_dirs if path]
         else:
-            places = [
+            self._plugin_places = [
                 resource_filename('nikola', utils.sys_encode('plugins')),
                 os.path.join(os.getcwd(), utils.sys_encode('plugins')),
                 os.path.expanduser('~/.nikola/plugins'),
             ] + [utils.sys_encode(path) for path in extra_plugins_dirs if path]
 
-        self.plugin_manager.getPluginLocator().setPluginPlaces(places)
+        self.plugin_manager.getPluginLocator().setPluginPlaces(self._plugin_places)
         self.plugin_manager.locatePlugins()
         bad_candidates = set([])
         for p in self.plugin_manager._candidates:
@@ -2204,7 +2217,7 @@ class Nikola(object):
 
     def __repr__(self):
         """Representation of a Nikola site."""
-        return '<Nikola Site: {0!r}>'.format(self.config['BLOG_TITLE']())
+        return '<Nikola Site: {0!r}>'.format(self.config['BLOG_TITLE'](self.config['DEFAULT_LANG']))
 
 
 def sanitized_locales(locale_fallback, locale_default, locales, translations):

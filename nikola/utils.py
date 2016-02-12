@@ -302,7 +302,7 @@ class TranslatableSetting(object):
         self.overriden_default = False
         self.values = defaultdict()
 
-        if isinstance(inp, dict):
+        if isinstance(inp, dict) and inp:
             self.translated = True
             self.values.update(inp)
             if self.default_lang not in self.values.keys():
@@ -546,6 +546,8 @@ class config_changed(tools.config_changed):
                 byte_data = data
             digest = hashlib.md5(byte_data).hexdigest()
             # LOGGER.debug('{{"{0}": {1}}}'.format(digest, byte_data))
+            # Humanized format:
+            # LOGGER.debug('[Digest {0} for {2}]\n{1}\n[Digest {0} for {2}]'.format(digest, byte_data, self.identifier))
             return digest
         else:
             raise Exception('Invalid type of config_changed parameter -- got '
@@ -909,7 +911,7 @@ def apply_filters(task, filters, skip_ext=None):
     return task
 
 
-def get_crumbs(path, is_file=False, index_folder=None):
+def get_crumbs(path, is_file=False, index_folder=None, lang=None):
     """Create proper links for a crumb bar.
 
     index_folder is used if you want to use title from index file
@@ -962,7 +964,7 @@ def get_crumbs(path, is_file=False, index_folder=None):
             index_post = index_folder.parse_index(folder, '', '')
             folder = folder.replace(crumb, '')
             if index_post:
-                crumb = index_post.title() or crumb
+                crumb = index_post.title(lang) or crumb
             _crumbs[i][1] = crumb
     return list(reversed(_crumbs))
 

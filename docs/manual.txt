@@ -9,7 +9,7 @@
 The Nikola Handbook
 ===================
 
-:Version: 7.7.4
+:Version: 7.7.5
 
 .. class:: alert alert-info pull-right
 
@@ -1076,12 +1076,13 @@ Getting More Themes
 
 There are a few themes for Nikola. They are available at
 the `Themes Index <https://themes.getnikola.com/>`_.
-Nikola has a built-in theme download/install mechanism to install those themes — the ``install_theme`` command:
+Nikola has a built-in theme download/install mechanism to install those themes
+— the ``theme`` command:
 
 
 .. code:: console
 
-    $ nikola install_theme -l
+    $ nikola theme -l
     Themes:
     -------
     blogtxt
@@ -1089,10 +1090,10 @@ Nikola has a built-in theme download/install mechanism to install those themes �
     ⋮
     ⋮
 
-    $ nikola install_theme blogtxt
-    [2013-10-12T16:46:13Z] NOTICE: install_theme: Downloading:
+    $ nikola theme -i blogtxt
+    [2013-10-12T16:46:13Z] NOTICE: theme: Downloading:
     https://themes.getnikola.com/v6/blogtxt.zip
-    [2013-10-12T16:46:15Z] NOTICE: install_theme: Extracting: blogtxt into themes
+    [2013-10-12T16:46:15Z] NOTICE: theme: Extracting: blogtxt into themes
 
 And there you are, you now have themes/blogtxt installed. It's very
 rudimentary, but it should work in most cases.
@@ -1553,11 +1554,15 @@ In reST:
 
     Euler’s formula: :math:`e^{ix} = \cos x + i\sin x`
 
-In other input formats:
+In HTML and other input formats:
 
 .. code:: text
 
     Euler’s formula: \(e^{ix} = \cos x + i\sin x\)
+
+Note that some input formats (including Markdown) require using **double
+backslashes** in the delimiters (``\\(inline math\\)``). Please check your
+output first before reporting bugs.
 
 Display mathematics are produced using the reST `math` **directive** or the
 LaTeX backslash-brackets delimiters:
@@ -1575,11 +1580,16 @@ In reST:
 
       \int \frac{dx}{1+ax}=\frac{1}{a}\ln(1+ax)+C
 
-In other input formats:
+In HTML and other input formats:
 
 .. code:: text
 
     \[\int \frac{dx}{1+ax}=\frac{1}{a}\ln(1+ax)+C\]
+
+Note that some input formats (including Markdown) require using **double
+backslashes** in the delimiters (``\\[display math\\]``). Please check your
+output first before reporting bugs.
+
 
 reStructuredText Extensions
 ---------------------------
@@ -2146,7 +2156,13 @@ Nikola is released under the `MIT license <https://getnikola.com/license.html>`_
 components shipped along with Nikola, or required by it are released under
 other licenses.
 
-If you are not familiar with free software licensing: In general, you should be able to
-do pretty much anything you want, unless you modify Nikola. If you modify it, and share
-it with someone else, that someone else should get all your modifications under the same
-license you got it.
+
+If you are not familiar with free software licensing, here is a brief
+explanation (this is NOT legal advice): In general, you can do pretty much
+anything you want — including modifying Nikola, using and redistributing the
+original version or the your modified version. However, if you redistribute
+Nikola to someone else, either a modified version or the original version, the
+full copyright notice and license text must be included in your distribution.
+Nikola is provided “as is”, and the Nikola contributors are not liable for any
+damage caused by the software. Read the `full license text
+<https://getnikola.com/license.html>`_ for details.
