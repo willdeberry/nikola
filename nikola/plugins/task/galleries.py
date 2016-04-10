@@ -89,6 +89,7 @@ class Galleries(Task, ImageProcessor):
             'gallery_index_title': site.config['GALLERY_INDEX_TITLE'],
             'galleries_use_thumbnail': site.config['GALLERIES_USE_THUMBNAIL'],
             'galleries_default_thumbnail': site.config['GALLERIES_DEFAULT_THUMBNAIL'],
+            'preserve_exif_data': site.config['PRESERVE_EXIF_DATA'],
         }
 
         # Verify that no folder in GALLERY_FOLDERS appears twice
@@ -227,9 +228,7 @@ class Galleries(Task, ImageProcessor):
                 if post:
                     context["title"] = post.title(lang)
                 else:
-                    # TODO: make this translatable
-                    context["title"] = self.kw['gallery_index_title'](lang)
-
+                    context["title"] = os.path.basename(gallery)
                 context["description"] = None
 
                 image_name_list = [os.path.basename(p) for p in image_list]
@@ -238,7 +237,7 @@ class Galleries(Task, ImageProcessor):
                     img_titles = []
                     for fn in image_name_list:
                         name_without_ext = os.path.splitext(os.path.basename(fn))[0]
-                        img_titles.append(utils.unslugify(name_without_ext))
+                        img_titles.append(utils.unslugify(name_without_ext, lang))
                 else:
                     img_titles = [''] * len(image_name_list)
 

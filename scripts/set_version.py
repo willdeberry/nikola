@@ -26,7 +26,12 @@ def sed_like_thing(pattern, repl, path):
 
 if __name__ == "__main__":
     inpf = raw_input if sys.version_info[0] == 2 else input
-    version = inpf("New version number (in format X.Y.Z): ").strip()
+    while True:
+        version = inpf("New version number (in format X.Y.Z): ").strip()
+        if version.startswith('v'):
+            print("ERROR: the version number must not start with v.")
+        else:
+            break
 
     for doc in glob.glob(os.path.join("docs/*.txt")):
         sed_like_thing(":Version: .*", ":Version: {0}".format(version), doc)
@@ -37,7 +42,7 @@ if __name__ == "__main__":
     sed_like_thing('__version__ = ".*"', '__version__ = "{0}"'.format(version), os.path.join('nikola', '__init__.py'))
     sed_like_thing('New in master', 'New in v{0}'.format(version), 'CHANGES.txt')
     sed_like_thing(':Version: .*', ':Version: Nikola v{0}'.format(version), os.path.join('docs', 'man', 'nikola.rst'))
-    man = subprocess.check_output(["rst2man", os.path.join('docs', 'man', 'nikola.rst')])
+    man = subprocess.check_output(["rst2man.py", os.path.join('docs', 'man', 'nikola.rst')])
     with io.open(os.path.join('docs', 'man', 'nikola.1'), 'w', encoding='utf-8') as fh:
         try:
             man = man.decode('utf-8')

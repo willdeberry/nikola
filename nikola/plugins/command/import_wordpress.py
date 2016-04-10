@@ -196,8 +196,29 @@ class CommandImportWordpress(Command, ImportMixin):
             'default': 'first',
             'help': 'lower: Convert all tag and category names to lower case\nfirst: Keep first spelling of tag or category name',
         },
+        {
+            'name': 'one_file',
+            'long': 'one-file',
+            'default': False,
+            'type': bool,
+            'help': "Save imported posts in the more modern one-file format.",
+        },
     ]
     all_tags = set([])
+
+    def _get_compiler(self):
+        """Return whatever compiler we will use."""
+        self._find_wordpress_compiler()
+        if self.wordpress_page_compiler is not None:
+            return self.wordpress_page_compiler
+        plugin_info = self.site.plugin_manager.getPluginByName('markdown', 'PageCompiler')
+        if plugin_info is not None:
+            if not plugin_info.is_activated:
+                self.site.plugin_manager.activatePluginByName(plugin_info.name)
+                plugin_info.plugin_object.set_site(self.site)
+            return plugin_info.plugin_object
+        else:
+            LOGGER.error("Can't find markdown post compiler.")
 
     def _find_wordpress_compiler(self):
         """Find WordPress compiler plugin."""
@@ -222,6 +243,8 @@ class CommandImportWordpress(Command, ImportMixin):
             LOGGER.warn('You specified additional arguments ({0}). Please consider '
                         'putting these arguments before the filename if you '
                         'are running into problems.'.format(args))
+
+        self.onefile = options.get('one_file', False)
 
         self.import_into_existing_site = False
         self.url_map = {}
@@ -350,7 +373,7 @@ class CommandImportWordpress(Command, ImportMixin):
                     tag_str = tag
             except AttributeError:
                 tag_str = tag
-            tag = utils.slugify(tag_str)
+            tag = utils.slugify(tag_str, self.lang)
             src_url = '{}tag/{}'.format(self.context['SITE_URL'], tag)
             dst_url = self.site.link('tag', tag)
             if src_url != dst_url:
@@ -382,7 +405,7 @@ class CommandImportWordpress(Command, ImportMixin):
                 if b'<atom:link rel=' in line:
                     continue
                 xml.append(line)
-        return b'\n'.join(xml)
+        return b''.join(xml)
 
     @classmethod
     def get_channel_from_file(cls, filename):
@@ -396,7 +419,8 @@ class CommandImportWordpress(Command, ImportMixin):
         wordpress_namespace = channel.nsmap['wp']
 
         context = SAMPLE_CONF.copy()
-        context['DEFAULT_LANG'] = get_text_tag(channel, 'language', 'en')[:2]
+        self.lang = get_text_tag(channel, 'language', 'en')[:2]
+        context['DEFAULT_LANG'] = self.lang
         context['TRANSLATIONS_PATTERN'] = DEFAULT_TRANSLATIONS_PATTERN
         context['BLOG_TITLE'] = get_text_tag(channel, 'title',
                                              'PUT TITLE HERE')
@@ -446,9 +470,6 @@ class CommandImportWordpress(Command, ImportMixin):
 
     def download_url_content_to_file(self, url, dst_path):
         """Download some content (attachments) to a file."""
-        if self.no_downloads:
-            return
-
         try:
             request = requests.get(url, auth=self.auth)
             if request.status_code >= 400:
@@ -468,10 +489,13 @@ class CommandImportWordpress(Command, ImportMixin):
                             'foo')
         path = urlparse(url).path
         dst_path = os.path.join(*([self.output_folder, 'files'] + list(path.split('/'))))
-        dst_dir = os.path.dirname(dst_path)
-        utils.makedirs(dst_dir)
-        LOGGER.info("Downloading {0} => {1}".format(url, dst_path))
-        self.download_url_content_to_file(url, dst_path)
+        if self.no_downloads:
+            LOGGER.info("Skipping downloading {0} => {1}".format(url, dst_path))
+        else:
+            dst_dir = os.path.dirname(dst_path)
+            utils.makedirs(dst_dir)
+            LOGGER.info("Downloading {0} => {1}".format(url, dst_path))
+            self.download_url_content_to_file(url, dst_path)
         dst_url = '/'.join(dst_path.split(os.sep)[2:])
         links[link] = '/' + dst_url
         links[url] = '/' + dst_url
@@ -562,15 +586,18 @@ class CommandImportWordpress(Command, ImportMixin):
                         meta = {}
                         meta['size'] = size.decode('utf-8')
                         if width_key in metadata[size_key][size] and height_key in metadata[size_key][size]:
-                            meta['width'] = metadata[size_key][size][width_key]
-                            meta['height'] = metadata[size_key][size][height_key]
+                            meta['width'] = int(metadata[size_key][size][width_key])
+                            meta['height'] = int(metadata[size_key][size][height_key])
 
                         path = urlparse(url).path
                         dst_path = os.path.join(*([self.output_folder, 'files'] + list(path.split('/'))))
-                        dst_dir = os.path.dirname(dst_path)
-                        utils.makedirs(dst_dir)
-                        LOGGER.info("Downloading {0} => {1}".format(url, dst_path))
-                        self.download_url_content_to_file(url, dst_path)
+                        if self.no_downloads:
+                            LOGGER.info("Skipping downloading {0} => {1}".format(url, dst_path))
+                        else:
+                            dst_dir = os.path.dirname(dst_path)
+                            utils.makedirs(dst_dir)
+                            LOGGER.info("Downloading {0} => {1}".format(url, dst_path))
+                            self.download_url_content_to_file(url, dst_path)
                         dst_url = '/'.join(dst_path.split(os.sep)[2:])
                         links[url] = '/' + dst_url
 
@@ -813,7 +840,7 @@ class CommandImportWordpress(Command, ImportMixin):
         else:
             if len(pathlist) > 1:
                 out_folder = os.path.join(*([out_folder] + pathlist[:-1]))
-            slug = utils.slugify(pathlist[-1])
+            slug = utils.slugify(pathlist[-1], self.lang)
 
         description = get_text_tag(item, 'description', '')
         post_date = get_text_tag(
@@ -928,14 +955,32 @@ class CommandImportWordpress(Command, ImportMixin):
                     meta_slug = slug
                 tags, other_meta = self._create_metadata(status, excerpt, tags, categories,
                                                          post_name=os.path.join(out_folder, slug))
-                self.write_metadata(os.path.join(self.output_folder, out_folder,
-                                                 out_meta_filename),
-                                    title, meta_slug, post_date, description, tags, **other_meta)
-                self.write_content(
-                    os.path.join(self.output_folder,
-                                 out_folder, out_content_filename),
-                    content,
-                    rewrite_html)
+
+                meta = {
+                    "title": title,
+                    "slug": meta_slug,
+                    "date": post_date,
+                    "description": description,
+                    "tags": ','.join(tags),
+                }
+                meta.update(other_meta)
+                if self.onefile:
+                    self.write_post(
+                        os.path.join(self.output_folder,
+                                     out_folder, out_content_filename),
+                        content,
+                        meta,
+                        self._get_compiler(),
+                        rewrite_html)
+                else:
+                    self.write_metadata(os.path.join(self.output_folder, out_folder,
+                                                     out_meta_filename),
+                                        title, meta_slug, post_date, description, tags, **other_meta)
+                    self.write_content(
+                        os.path.join(self.output_folder,
+                                     out_folder, out_content_filename),
+                        content,
+                        rewrite_html)
 
             if self.export_comments:
                 comments = []
