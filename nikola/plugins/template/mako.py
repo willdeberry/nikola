@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -27,6 +27,7 @@
 """Mako template handler."""
 
 from __future__ import unicode_literals, print_function, absolute_import
+import io
 import os
 import shutil
 import sys
@@ -54,9 +55,8 @@ class MakoTemplates(TemplateSystem):
     directories = []
     cache_dir = None
 
-    def get_deps(self, filename):
-        """Get dependencies for a template (internal function)."""
-        text = util.read_file(filename)
+    def get_string_deps(self, text, filename=None):
+        """Find dependencies for a template string."""
         lex = lexer.Lexer(text=text, filename=filename)
         lex.parse()
 
@@ -65,7 +65,16 @@ class MakoTemplates(TemplateSystem):
             keyword = getattr(n, 'keyword', None)
             if keyword in ["inherit", "namespace"] or isinstance(n, parsetree.IncludeTag):
                 deps.append(n.attributes['file'])
+        # Some templates will include "foo.tmpl" and we need paths, so normalize them
+        # using the template lookup
+        for i, d in enumerate(deps):
+            deps[i] = self.get_template_path(d)
         return deps
+
+    def get_deps(self, filename):
+        """Get paths to dependencies for a template."""
+        text = util.read_file(filename)
+        return self.get_string_deps(text, filename)
 
     def set_directories(self, directories, cache_folder):
         """Create a new template lookup with set directories."""
@@ -108,14 +117,14 @@ class MakoTemplates(TemplateSystem):
         data = template.render_unicode(**context)
         if output_name is not None:
             makedirs(os.path.dirname(output_name))
-            with open(output_name, 'w+') as output:
+            with io.open(output_name, 'w', encoding='utf-8') as output:
                 output.write(data)
         return data
 
     def render_template_to_string(self, template, context):
         """Render template to a string using context."""
         context.update(self.filters)
-        return Template(template).render(**context)
+        return Template(template, lookup=self.lookup).render(**context)
 
     def template_deps(self, template_name):
         """Generate list of dependencies for a template."""
@@ -126,8 +135,8 @@ class MakoTemplates(TemplateSystem):
             dep_filenames = self.get_deps(template.filename)
             deps = [template.filename]
             for fname in dep_filenames:
-                deps += self.template_deps(fname)
-            self.cache[template_name] = tuple(deps)
+                deps += [fname] + self.get_deps(fname)
+            self.cache[template_name] = deps
         return list(self.cache[template_name])
 
     def get_template_path(self, template_name):

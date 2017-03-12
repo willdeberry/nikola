@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -94,7 +94,7 @@ class CommandAuto(Command):
             'long': 'port',
             'default': 8000,
             'type': int,
-            'help': 'Port nummber (default: 8000)',
+            'help': 'Port number (default: 8000)',
         },
         {
             'name': 'address',
@@ -102,7 +102,7 @@ class CommandAuto(Command):
             'long': 'address',
             'type': str,
             'default': '127.0.0.1',
-            'help': 'Address to bind (default: 127.0.0.1 – localhost)',
+            'help': 'Address to bind (default: 127.0.0.1 -- localhost)',
         },
         {
             'name': 'browser',
@@ -299,11 +299,11 @@ class CommandAuto(Command):
         f_path = os.path.join(self.site.config['OUTPUT_FOLDER'], *[unquote(x) for x in p_uri.path.split('/')])
 
         # ‘Pretty’ URIs and root are assumed to be HTML
-        mimetype = 'text/html' if uri.endswith('/') else mimetypes.guess_type(uri)[0] or 'application/octet-stream'
+        mimetype = 'text/html' if uri.endswith('/') else mimetypes.guess_type(p_uri.path)[0] or 'application/octet-stream'
 
         if os.path.isdir(f_path):
-            if not f_path.endswith('/'):  # Redirect to avoid breakage
-                start_response('301 Redirect', [('Location', p_uri.path + '/')])
+            if not p_uri.path.endswith('/'):  # Redirect to avoid breakage
+                start_response('301 Moved Permanently', [('Location', p_uri.path + '/')])
                 return []
             f_path = os.path.join(f_path, self.site.config['INDEX_FILE'])
             mimetype = 'text/html'

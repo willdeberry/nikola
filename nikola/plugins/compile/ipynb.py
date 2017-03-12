@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2013-2016 Damián Avila, Chris Warrick and others.
+# Copyright © 2013-2017 Damián Avila, Chris Warrick and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -24,7 +24,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""Implementation of compile_html based on nbconvert."""
+"""Page compiler plugin for nbconvert."""
 
 from __future__ import unicode_literals, print_function
 import io
@@ -62,7 +62,6 @@ except ImportError:
 
 from nikola.plugin_categories import PageCompiler
 from nikola.utils import makedirs, req_missing, get_logger, STDERR_HANDLER
-from nikola.shortcodes import apply_shortcodes
 
 
 class CompileIPynb(PageCompiler):
@@ -78,25 +77,46 @@ class CompileIPynb(PageCompiler):
         self.logger = get_logger('compile_ipynb', STDERR_HANDLER)
         super(CompileIPynb, self).set_site(site)
 
-    def compile_html_string(self, source, is_two_file=True):
+    def _compile_string(self, nb_json):
         """Export notebooks as HTML strings."""
         if flag is None:
             req_missing(['ipython[notebook]>=2.0.0'], 'build this site (compile ipynb)')
-        HTMLExporter.default_template = 'basic'
         c = Config(self.site.config['IPYNB_CONFIG'])
         exportHtml = HTMLExporter(config=c)
-        with io.open(source, "r", encoding="utf8") as in_file:
-            nb_json = nbformat.read(in_file, current_nbformat)
-        (body, resources) = exportHtml.from_notebook_node(nb_json)
+        body, _ = exportHtml.from_notebook_node(nb_json)
         return body
 
-    def compile_html(self, source, dest, is_two_file=True):
-        """Compile source file into HTML and save as dest."""
+    @staticmethod
+    def _nbformat_read(in_file):
+        return nbformat.read(in_file, current_nbformat)
+
+    def compile_string(self, data, source_path=None, is_two_file=True, post=None, lang=None):
+        """Compile notebooks into HTML strings."""
+        output = self._compile_string(nbformat.reads(data, current_nbformat))
+        return self.site.apply_shortcodes(output, filename=source_path, with_dependencies=True, extra_context={'post': post})
+
+    # TODO remove in v8
+    def compile_html_string(self, source, is_two_file=True):
+        """Export notebooks as HTML strings."""
+        with io.open(source, "r", encoding="utf8") as in_file:
+            nb_json = nbformat.read(in_file, current_nbformat)
+        return self._compile_string(nb_json)
+
+    def compile(self, source, dest, is_two_file=False, post=None, lang=None):
+        """Compile the source file into HTML and save as dest."""
         makedirs(os.path.dirname(dest))
         with io.open(dest, "w+", encoding="utf8") as out_file:
-            output = self.compile_html_string(source, is_two_file)
-            output = apply_shortcodes(output, self.site.shortcode_registry, self.site, source)
+            with io.open(source, "r", encoding="utf8") as in_file:
+                nb_str = in_file.read()
+            output, shortcode_deps = self.compile_string(nb_str, is_two_file, post, lang)
             out_file.write(output)
+        if post is None:
+            if shortcode_deps:
+                self.logger.error(
+                    "Cannot save dependencies for post {0} (post unknown)",
+                    source)
+        else:
+            post._depfile[dest] += shortcode_deps
 
     def read_metadata(self, post, file_metadata_regexp=None, unslugify_titles=False, lang=None):
         """Read metadata directly from ipynb file.

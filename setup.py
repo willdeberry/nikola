@@ -3,7 +3,6 @@
 # Don't use __future__ in this script, it breaks buildout
 # from __future__ import print_function
 import os
-import subprocess
 import sys
 import shutil
 from setuptools import setup, find_packages
@@ -27,7 +26,11 @@ class PyTest(TestCommand):
 with open('requirements.txt', 'r') as fh:
     dependencies = [l.strip() for l in fh]
 
-extras = {}
+extras = {
+    ':python_version >= "3.4"': ['doit>=0.28.0'],
+    ':python_version == "3.3"': ['doit>=0.30.1'],
+    ':python_version == "2.7"': ['doit>=0.28.0,<=0.29.0'],
+}
 
 with open('requirements-extras.txt', 'r') as fh:
     extras['extras'] = [l.strip() for l in fh][1:]
@@ -113,7 +116,7 @@ class nikola_install(install):
 
 
 setup(name='Nikola',
-      version='7.7.7',
+      version='7.8.3',
       description='A modular, fast, simple, static website and blog generator',
       long_description=open('README.rst').read(),
       author='Roberto Alsina and others',
@@ -129,6 +132,7 @@ setup(name='Nikola',
                    'Intended Audience :: End Users/Desktop',
                    'License :: OSI Approved :: MIT License',
                    'Operating System :: MacOS',
+                   'Operating System :: MacOS :: MacOS X',
                    'Operating System :: Microsoft :: Windows',
                    'Operating System :: OS Independent',
                    'Operating System :: POSIX',

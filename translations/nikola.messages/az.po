@@ -1,5 +1,5 @@
 # Messages in Nikola
-# Copyright (C) 2012-2013
+# Copyright (C) 2012-2016
 # This file is distributed under the same license as the Nikola package.
 # 
 # Translators:
@@ -7,13 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
-# knulp <knulphaller@gmail.com>, 2014
+# knulp <knulphaller@gmail.com>, 2014,2016
 msgid ""
 msgstr ""
 "Project-Id-Version: Nikola\n"
 "Report-Msgid-Bugs-To: ralsina@netmanagers.com.ar\n"
 "POT-Creation-Date: 2013-03-15 12:24-0300\n"
-"PO-Revision-Date: 2015-08-31 07:51+0000\n"
+"PO-Revision-Date: 2017-01-07 11:37+0000\n"
 "Last-Translator: Chris Warrick <kwpolska@gmail.com>\n"
 "Language-Team: Azerbaijani (http://www.transifex.com/ralsina/nikola/language/az/)\n"
 "MIME-Version: 1.0\n"
@@ -117,29 +117,49 @@ msgid "Skip to main content"
 msgstr "Əsas mövzuya keç"
 
 msgid "Subcategories:"
-msgstr ""
+msgstr "Subkateqoriyalar"
 
 #. Used for active navigation links, for screen readers only
 msgid "(active)"
-msgstr ""
+msgstr "(aktiv)"
 
 #. Default content for a new post
 msgid "Write your post here."
-msgstr ""
+msgstr "Öz məqaləni bura yaz"
 
 #. Default content for a new page
 msgid "Write your page here."
-msgstr ""
+msgstr "Öz səhifəni bura yaz"
 
 msgid "Uncategorized"
-msgstr ""
+msgstr "Kateqoriyasız"
 
 #. Used for feeds of any format
 msgid "Updates"
-msgstr ""
+msgstr "Yenilənmələr"
 
 msgid "Authors"
-msgstr ""
+msgstr "Müəlliflər"
 
 msgid "Posts by %s"
+msgstr "%s tərəfindən yazılmış yazılar"
+
+msgid "Toggle navigation"
+msgstr ""
+
+#. Used to format months per year
+msgid "{month} {year}"
+msgstr ""
+
+#. Used to format a date
+msgid "{month} {day}, {year}"
+msgstr ""
+
+msgid "Previous"
+msgstr ""
+
+msgid "Up"
+msgstr ""
+
+msgid "Next"
 msgstr ""

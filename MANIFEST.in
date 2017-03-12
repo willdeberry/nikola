@@ -1,7 +1,10 @@
+graft bower_components
 graft docs
+graft logo
 graft nikola
 graft scripts
 graft tests
+graft translations
 include *.txt
 include *.rst
 include *.py

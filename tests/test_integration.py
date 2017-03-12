@@ -203,8 +203,8 @@ class TranslatedBuildTest(EmptyBuildTest):
 
     def test_translated_titles(self):
         """Check that translated title is picked up."""
-        en_file = os.path.join(self.target_dir, "output", "stories", "1.html")
-        pl_file = os.path.join(self.target_dir, "output", self.ol, "stories", "1.html")
+        en_file = os.path.join(self.target_dir, "output", "pages", "1.html")
+        pl_file = os.path.join(self.target_dir, "output", self.ol, "pages", "1.html")
         # Files should be created
         self.assertTrue(os.path.isfile(en_file))
         self.assertTrue(os.path.isfile(pl_file))
@@ -223,8 +223,8 @@ class TranslationsPatternTest1(TranslatedBuildTest):
     @classmethod
     def patch_site(self):
         """Set the TRANSLATIONS_PATTERN to the old v6 default"""
-        os.rename(os.path.join(self.target_dir, "stories", "1.%s.txt" % self.ol),
-                  os.path.join(self.target_dir, "stories", "1.txt.%s" % self.ol)
+        os.rename(os.path.join(self.target_dir, "pages", "1.%s.txt" % self.ol),
+                  os.path.join(self.target_dir, "pages", "1.txt.%s" % self.ol)
                   )
         conf_path = os.path.join(self.target_dir, "conf.py")
         with io.open(conf_path, "r", encoding="utf-8") as inf:
@@ -241,7 +241,7 @@ class MissingDefaultLanguageTest(TranslatedBuildTest):
     @classmethod
     def fill_site(self):
         super(MissingDefaultLanguageTest, self).fill_site()
-        os.unlink(os.path.join(self.target_dir, "stories", "1.txt"))
+        os.unlink(os.path.join(self.target_dir, "pages", "1.txt"))
 
     def test_translated_titles(self):
         """Do not test titles as we just removed the translation"""
@@ -255,8 +255,8 @@ class TranslationsPatternTest2(TranslatedBuildTest):
     def patch_site(self):
         """Set the TRANSLATIONS_PATTERN to the old v6 default"""
         conf_path = os.path.join(self.target_dir, "conf.py")
-        os.rename(os.path.join(self.target_dir, "stories", "1.%s.txt" % self.ol),
-                  os.path.join(self.target_dir, "stories", "1.txt.%s" % self.ol)
+        os.rename(os.path.join(self.target_dir, "pages", "1.%s.txt" % self.ol),
+                  os.path.join(self.target_dir, "pages", "1.txt.%s" % self.ol)
                   )
         with io.open(conf_path, "r", encoding="utf-8") as inf:
             data = inf.read()
@@ -384,7 +384,7 @@ class TestCheckFailure(DemoBuildTest):
 
 
 class RelativeLinkTest2(DemoBuildTest):
-    """Check that dropping stories to the root doesn't break links."""
+    """Check that dropping pages to the root doesn't break links."""
 
     @classmethod
     def patch_site(self):
@@ -392,10 +392,10 @@ class RelativeLinkTest2(DemoBuildTest):
         conf_path = os.path.join(self.target_dir, "conf.py")
         with io.open(conf_path, "r", encoding="utf-8") as inf:
             data = inf.read()
-            data = data.replace('("stories/*.txt", "stories", "story.tmpl"),',
-                                '("stories/*.txt", "", "story.tmpl"),')
-            data = data.replace('("stories/*.rst", "stories", "story.tmpl"),',
-                                '("stories/*.rst", "", "story.tmpl"),')
+            data = data.replace('("pages/*.txt", "pages", "story.tmpl"),',
+                                '("pages/*.txt", "", "story.tmpl"),')
+            data = data.replace('("pages/*.rst", "pages", "story.tmpl"),',
+                                '("pages/*.rst", "", "story.tmpl"),')
             data = data.replace('# INDEX_PATH = ""',
                                 'INDEX_PATH = "blog"')
         with io.open(conf_path, "w+", encoding="utf8") as outf:
@@ -403,7 +403,7 @@ class RelativeLinkTest2(DemoBuildTest):
             outf.flush()
 
     def test_relative_links(self):
-        """Check that the links in a story are correct"""
+        """Check that the links in a page are correct"""
         test_path = os.path.join(self.target_dir, "output", "about-nikola.html")
         flag = False
         with open(test_path, "rb") as inf:
@@ -496,53 +496,6 @@ class SubdirRunningTest(DemoBuildTest):
         with cd(os.path.join(self.target_dir, 'posts')):
             result = __main__.main(['build'])
             self.assertEquals(result, 0)
-
-
-class InvariantBuildTest(EmptyBuildTest):
-    """Test that a default build of --demo works."""
-
-    @classmethod
-    def build(self):
-        """Build the site."""
-        try:
-            self.oldlocale = locale.getlocale()
-            locale.setlocale(locale.LC_ALL, ("en_US", "utf8"))
-        except:
-            pytest.skip('no en_US locale!')
-        else:
-            with cd(self.target_dir):
-                __main__.main(["build", "--invariant"])
-        finally:
-            try:
-                locale.setlocale(locale.LC_ALL, self.oldlocale)
-            except:
-                pass
-
-    @classmethod
-    def fill_site(self):
-        """Fill the site with demo content."""
-        self.init_command.copy_sample_site(self.target_dir)
-        self.init_command.create_configuration(self.target_dir)
-        src1 = os.path.join(os.path.dirname(__file__), 'data', '1-nolinks.rst')
-        dst1 = os.path.join(self.target_dir, 'posts', '1.rst')
-        shutil.copy(src1, dst1)
-        os.system('rm "{0}/stories/creating-a-theme.rst" "{0}/stories/extending.txt" "{0}/stories/internals.txt" "{0}/stories/manual.rst" "{0}/stories/social_buttons.txt" "{0}/stories/theming.rst" "{0}/stories/path_handlers.txt" "{0}/stories/charts.txt"'.format(self.target_dir))
-
-    def test_invariance(self):
-        """Compare the output to the canonical output."""
-        if sys.version_info[0:2] != (2, 7):
-            pytest.skip('only python 2.7 is supported for invariance')
-        good_path = os.path.join(os.path.dirname(__file__), 'data', 'baseline{0[0]}.{0[1]}'.format(sys.version_info))
-        if not os.path.exists(good_path):
-            pytest.skip('no baseline found')
-        with cd(self.target_dir):
-            try:
-                diff = subprocess.check_output(['diff', '-ubwr', good_path, 'output'])
-                self.assertEqual(diff.strip(), '')
-            except subprocess.CalledProcessError as exc:
-                print('Unexplained diff for the invariance test. (-canonical +built)')
-                print(exc.output.decode('utf-8'))
-                self.assertEqual(exc.returncode, 0, 'Unexplained diff for the invariance test.')
 
 
 class RedirectionsTest1(TestCheck):

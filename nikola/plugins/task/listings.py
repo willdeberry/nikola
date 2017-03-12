@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -29,12 +29,12 @@
 from __future__ import unicode_literals, print_function
 
 from collections import defaultdict
-import sys
+import io
 import os
 import lxml.html
 
 from pygments import highlight
-from pygments.lexers import get_lexer_for_filename, TextLexer
+from pygments.lexers import get_lexer_for_filename, guess_lexer, TextLexer
 import natsort
 
 from nikola.plugin_categories import Task
@@ -55,6 +55,7 @@ class Listings(Task):
     def set_site(self, site):
         """Set Nikola site."""
         site.register_path_handler('listing', self.listing_path)
+        site.register_path_handler('listing_source', self.listing_source_path)
 
         # We need to prepare some things for the listings path handler to work.
 
@@ -73,7 +74,7 @@ class Listings(Task):
             if source in appearing_paths or dest in appearing_paths:
                 problem = source if source in appearing_paths else dest
                 utils.LOGGER.error("The listings input or output folder '{0}' appears in more than one entry in LISTINGS_FOLDERS, exiting.".format(problem))
-                sys.exit(1)
+                continue
             appearing_paths.add(source)
             appearing_paths.add(dest)
 
@@ -116,7 +117,9 @@ class Listings(Task):
             if in_name and in_name.endswith('.ipynb'):
                 # Special handling: render ipynbs in listings (Issue #1900)
                 ipynb_compiler = self.site.plugin_manager.getPluginByName("ipynb", "PageCompiler").plugin_object
-                ipynb_raw = ipynb_compiler.compile_html_string(in_name, True)
+                with io.open(in_name, "r", encoding="utf8") as in_file:
+                    nb_json = ipynb_compiler._nbformat_read(in_file)
+                    ipynb_raw = ipynb_compiler._compile_string(nb_json)
                 ipynb_html = lxml.html.fromstring(ipynb_raw)
                 # The raw HTML contains garbage (scripts and styles), we can’t leave it in
                 code = lxml.html.tostring(ipynb_html.xpath('//*[@id="notebook"]')[0], encoding='unicode')
@@ -127,7 +130,11 @@ class Listings(Task):
                     try:
                         lexer = get_lexer_for_filename(in_name)
                     except:
-                        lexer = TextLexer()
+                        try:
+                            lexer = guess_lexer(fd.read())
+                        except:
+                            lexer = TextLexer()
+                        fd.seek(0)
                     code = highlight(fd.read(), lexer, utils.NikolaPygmentsHTML(in_name))
                 title = os.path.basename(in_name)
             else:
@@ -145,7 +152,7 @@ class Listings(Task):
                         os.path.join(
                             self.kw['output_folder'],
                             output_folder))))
-            if self.site.config['COPY_SOURCES'] and in_name:
+            if in_name:
                 source_link = permalink[:-5]  # remove '.html'
             else:
                 source_link = None
@@ -238,19 +245,35 @@ class Listings(Task):
                         'uptodate': [utils.config_changed(uptodate, 'nikola.plugins.task.listings:source')],
                         'clean': True,
                     }, self.kw["filters"])
-                    if self.site.config['COPY_SOURCES']:
-                        rel_name = os.path.join(rel_path, f)
-                        rel_output_name = os.path.join(output_folder, rel_path, f)
-                        self.register_output_name(input_folder, rel_name, rel_output_name)
-                        out_name = os.path.join(self.kw['output_folder'], rel_output_name)
-                        yield utils.apply_filters({
-                            'basename': self.name,
-                            'name': out_name,
-                            'file_dep': [in_name],
-                            'targets': [out_name],
-                            'actions': [(utils.copy_file, [in_name, out_name])],
-                            'clean': True,
-                        }, self.kw["filters"])
+
+                    rel_name = os.path.join(rel_path, f)
+                    rel_output_name = os.path.join(output_folder, rel_path, f)
+                    self.register_output_name(input_folder, rel_name, rel_output_name)
+                    out_name = os.path.join(self.kw['output_folder'], rel_output_name)
+                    yield utils.apply_filters({
+                        'basename': self.name,
+                        'name': out_name,
+                        'file_dep': [in_name],
+                        'targets': [out_name],
+                        'actions': [(utils.copy_file, [in_name, out_name])],
+                        'clean': True,
+                    }, self.kw["filters"])
+
+    def listing_source_path(self, name, lang):
+        """A link to the source code for a listing.
+
+        It will try to use the file name if it's not ambiguous, or the file path.
+
+        Example:
+
+        link://listing_source/hello.py => /listings/tutorial/hello.py
+
+        link://listing_source/tutorial/hello.py => /listings/tutorial/hello.py
+        """
+        result = self.listing_path(name, lang)
+        if result[-1].endswith('.html'):
+            result[-1] = result[-1][:-5]
+        return result
 
     def listing_path(self, namep, lang):
         """A link to a listing.
@@ -275,14 +298,14 @@ class Listings(Task):
                 # ambiguities.
                 if len(self.improper_input_file_mapping[name]) > 1:
                     utils.LOGGER.error("Using non-unique listing name '{0}', which maps to more than one listing name ({1})!".format(name, str(self.improper_input_file_mapping[name])))
-                    sys.exit(1)
+                    return ["ERROR"]
                 if len(self.site.config['LISTINGS_FOLDERS']) > 1:
                     utils.LOGGER.notice("Using listings names in site.link() without input directory prefix while configuration's LISTINGS_FOLDERS has more than one entry.")
                 name = list(self.improper_input_file_mapping[name])[0]
                 break
         else:
             utils.LOGGER.error("Unknown listing name {0}!".format(namep))
-            sys.exit(1)
+            return ["ERROR"]
         if not name.endswith(os.sep + self.site.config["INDEX_FILE"]):
             name += '.html'
         path_parts = name.split(os.sep)

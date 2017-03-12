@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -28,7 +28,7 @@
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
-
+from nikola.plugins.compile.rest import _align_choice, _align_options_base
 
 from nikola.plugin_categories import RestExtension
 
@@ -46,10 +46,11 @@ class Plugin(RestExtension):
 
 
 CODE = """\
-<iframe width="{width}"
-height="{height}"
+<div class="youtube-video{align}">
+<iframe width="{width}" height="{height}"
 src="https://www.youtube.com/embed/{yid}?rel=0&amp;hd=1&amp;wmode=transparent"
-></iframe>"""
+></iframe>
+</div>"""
 
 
 class Youtube(Directive):
@@ -67,6 +68,7 @@ class Youtube(Directive):
     option_spec = {
         "width": directives.positive_int,
         "height": directives.positive_int,
+        "align": _align_choice
     }
 
     def run(self):
@@ -78,6 +80,10 @@ class Youtube(Directive):
             'height': 344,
         }
         options.update(self.options)
+        if self.options.get('align') in _align_options_base:
+            options['align'] = ' align-' + self.options['align']
+        else:
+            options['align'] = ''
         return [nodes.raw('', CODE.format(**options), format='html')]
 
     def check_content(self):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -50,7 +50,7 @@ class Redirect(Task):
         yield self.group_task()
         if kw['redirections']:
             for src, dst in kw["redirections"]:
-                src_path = os.path.join(kw["output_folder"], src)
+                src_path = os.path.join(kw["output_folder"], src.lstrip('/'))
                 yield utils.apply_filters({
                     'basename': self.name,
                     'name': src_path,

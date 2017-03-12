@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -38,7 +38,7 @@ _SHORTCODE_END = 3
 
 
 class ParsingError(Exception):
-    """Used for forwarding paring error messages to apply_shortcodes."""
+    """Used for forwarding parsing error messages to apply_shortcodes."""
 
     pass
 
@@ -256,7 +256,8 @@ def _split_shortcodes(data):
     return result
 
 
-def apply_shortcodes(data, registry, site=None, filename=None, raise_exceptions=False):
+# FIXME: in v8, get rid of with_dependencies
+def apply_shortcodes(data, registry, site=None, filename=None, raise_exceptions=False, lang=None, with_dependencies=False, extra_context={}):
     """Apply Hugo-style shortcodes on data.
 
     {{% name parameters %}} will end up calling the registered "name" function with the given parameters.
@@ -279,6 +280,7 @@ def apply_shortcodes(data, registry, site=None, filename=None, raise_exceptions=
         sc_data = _split_shortcodes(data)
         # Now process data
         result = []
+        dependencies = []
         pos = 0
         while pos < len(sc_data):
             current = sc_data[pos]
@@ -309,12 +311,22 @@ def apply_shortcodes(data, registry, site=None, filename=None, raise_exceptions=
                 args, kw = current[4]
                 kw['site'] = site
                 kw['data'] = data_arg
+                kw['lang'] = lang
+                kw.update(extra_context)
                 if name in registry:
-                    res = registry[name](*args, **kw)
+                    f = registry[name]
+                    if getattr(f, 'nikola_shortcode_pass_filename', None):
+                        kw['filename'] = filename
+                    res = f(*args, **kw)
+                    if not isinstance(res, tuple):  # For backards compatibility
+                        res = (res, [])
                 else:
                     LOGGER.error('Unknown shortcode {0} (started at {1})', name, _format_position(data, current[2]))
-                    res = ''
-                result.append(res)
+                    res = ('', [])
+                result.append(res[0])
+                dependencies += res[1]
+        if with_dependencies:
+            return empty_string.join(result), dependencies
         return empty_string.join(result)
     except ParsingError as e:
         if raise_exceptions:

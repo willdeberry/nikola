@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2012-2016 Roberto Alsina and others.
+# Copyright © 2012-2017 Roberto Alsina and others.
 
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
@@ -68,7 +68,7 @@ _RETURN_DOITNIKOLA = False
 def main(args=None):
     """Run Nikola."""
     colorful = False
-    if sys.stderr.isatty() and os.name != 'nt':
+    if sys.stderr.isatty() and os.name != 'nt' and os.getenv('NIKOLA_MONO') is None and os.getenv('TERM') != 'dumb':
         colorful = True
 
     ColorfulStderrHandler._colorful = colorful
@@ -155,7 +155,7 @@ def main(args=None):
             req_missing(['freezegun'], 'perform invariant builds')
 
     if config:
-        if os.path.exists('plugins') and not os.path.exists('plugins/__init__.py'):
+        if os.path.isdir('plugins') and not os.path.exists('plugins/__init__.py'):
             with open('plugins/__init__.py', 'w') as fh:
                 fh.write('# Plugin modules go here.')
 
@@ -247,6 +247,7 @@ class Clean(DoitClean):
                 shutil.rmtree(cache_folder)
         return super(Clean, self).clean_tasks(tasks, dryrun)
 
+
 # Nikola has its own "auto" commands that uses livereload.
 # Expose original doit "auto" command as "doit_auto".
 DoitAuto.name = 'doit_auto'
@@ -332,6 +333,8 @@ class DoitNikola(DoitMain):
 
         if args[0] == 'help':
             self.nikola.init_plugins(commands_only=True)
+        elif args[0] == 'plugin':
+            self.nikola.init_plugins(load_all=True)
         else:
             self.nikola.init_plugins()
 
