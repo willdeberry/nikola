@@ -92,7 +92,7 @@ class CompileRest(PageCompiler):
                 name = name.lower()
 
                 meta[name] = value
-        if '$' in meta['date']:
+        if '$' in meta.get('date', ''):
             meta['date'] = '1/1/1990'
         return meta
 
