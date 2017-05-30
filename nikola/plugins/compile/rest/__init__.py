@@ -355,5 +355,5 @@ class RemoveDocinfo(docutils.transforms.Transform):
 
     def apply(self):
         """Remove docinfo nodes."""
-        for node in self.document.traverse(docutils.nodes.docinfo):
-            node.parent.remove(node)
+        #for node in self.document.traverse(docutils.nodes.docinfo):
+        #    node.parent.remove(node)
