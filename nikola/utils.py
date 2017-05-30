@@ -833,7 +833,7 @@ def slugify(value, lang=None, force=False):
         # This is the standard state of slugify, which actually does some work.
         # It is the preferred style, especially for Western languages.
         value = unicode_str(unidecode(value))
-        value = _slugify_strip_re.sub('', value).strip().lower()
+        value = _slugify_strip_re.sub('', value).strip()
         return _slugify_hyphenate_re.sub('-', value)
     else:
         # This is the “disarmed” state of slugify, which lets the user
