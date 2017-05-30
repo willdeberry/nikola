@@ -92,6 +92,8 @@ class CompileRest(PageCompiler):
                 name = name.lower()
 
                 meta[name] = value
+        if '$' in meta['date']:
+            meta['date'] = '1/1/1990'
         return meta
 
     def compile_string(self, data, source_path=None, is_two_file=True, post=None, lang=None):
